@@ -11,7 +11,8 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
-@CrossOrigin(origins ="*")
+@CrossOrigin(origins = {"*",
+                "https://bloom-filter-ui.vercel.app/"})
 public class UserController {
 
     private final UserService userService;

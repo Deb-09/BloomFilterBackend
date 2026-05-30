@@ -78,25 +78,35 @@ public class UserService {
                     .build();
         }
         // else save to Database -> create a user -> save to the repo/db
-        User newUser = User.builder()
-                .username(username)
-                .email(email)
-                .createdAt(LocalDateTime.now())
-                .build();
+        try {
+            User newUser = User.builder()
+                    .username(username)
+                    .email(email)
+                    .createdAt(LocalDateTime.now())
+                    .build();
 
-        userRepository.save(newUser);
+            userRepository.save(newUser);
+            bloomFilterService.add(username);
 
-        // Update bloom filter so it knows about the new username immediately
-        bloomFilterService.add(username);
+            log.info("Registered new user: '{}'", username);
 
-        log.info("Registered new user: '{}'", username);
+            return UsernameCheckResponse.builder()
+                    .username(username)
+                    .available(true)
+                    .checkedBy("DATABASE")
+                    .message("User registered successfully!")
+                    .build();
 
-        return UsernameCheckResponse.builder()
-                .username(username)
-                .available(true)
-                .checkedBy("DATABASE")
-                .message("User registered successfully!")
-                .build();
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            // Race condition — two requests registered same username simultaneously
+            bloomFilterService.add(username); // update filter anyway
+            return UsernameCheckResponse.builder()
+                    .username(username)
+                    .available(false)
+                    .checkedBy("DATABASE")
+                    .message("Username already taken — registration failed!")
+                    .build();
+        }
     }
 
     private void validateUsername(String username) {
